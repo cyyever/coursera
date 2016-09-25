@@ -2,19 +2,12 @@
 
 fun is_older(first_date : int * int * int, second_date : int * int * int) =
   (*
-  if #1 first_date < #1 second_date orelse
-     #1 first_date = #1 second_date andalso #2 first_date < #2 second_date
-     orelse #1 first_date = #1 second_date andalso #2 first_date = #2 second_date andalso #3 first_date < #3 first_date
-  then
-      true
-  else
-      false
+  #1 first_date < #1 second_date orelse
+  #1 first_date = #1 second_date andalso #2 first_date < #2 second_date orelse 
+  #1 first_date = #1 second_date andalso #2 first_date = #2 second_date andalso #3 first_date < #3 first_date
   *)
-  if #1 first_date * 12 * 31 + #2 first_date * 31 + #3 first_date <  #1 second_date * 12 * 31 + #2 second_date * 31 + #3 second_date
-  then
-      true
-  else
-      false
+  #1 first_date * 12 * 31 + #2 first_date * 31 + #3 first_date <  #1 second_date * 12 * 31 + #2 second_date * 31 + #3 second_date
+ 
 
 fun number_in_month(dates : (int * int * int) list,month : int) =
   if null dates
