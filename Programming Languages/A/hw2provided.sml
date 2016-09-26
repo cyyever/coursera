@@ -103,16 +103,17 @@ fun sum_cards(cs) =
   in
       sum_remain_cards(0,cs)
   end
+
+fun compute_preliminary_score(sum,goal) =
+  if sum > goal
+  then
+      3 * (sum -goal)
+  else
+      goal -sum
       
 fun score(cs,goal) =
   let
-      val sum = sum_cards(cs)
-      val preliminary_score =
-	  if sum > goal
-	  then
-	      3 * (sum -goal)
-	  else
-	      goal -sum
+      val preliminary_score = compute_preliminary_score(sum_cards(cs),goal)
   in
       if all_same_color(cs)
       then
@@ -120,34 +121,55 @@ fun score(cs,goal) =
       else
 	  preliminary_score
   end
-      
+
 fun officiate (cs,move,goal) =
   let
       fun state(cs,move,hold) =
-	let
-	    val sum = sum_cards(hold)
-	in
-	    if sum > goal
-	    then
-		score(hold,goal)
-	    else
-		case move of
-		    [] => score(hold,goal)
-		  | m::move' =>
-		    case m of
-			Draw => (case cs of
-				    [] => score(hold,goal)
-				  | c::cs' => state(cs',move',c::hold))
-		      | Discard c => state(cs,move',remove_card(hold,c,IllegalMove))
-	end
+        let
+            val sum = sum_cards(hold)
+        in
+            if sum > goal
+            then
+                score(hold,goal)
+            else
+                case move of
+                    [] => score(hold,goal)
+                  | m::move' =>
+                    case m of
+                        Draw => (case cs of
+                                     [] => score(hold,goal)
+                                   | c::cs' => state(cs',move',c::hold))
+                      | Discard c => state(cs,move',remove_card(hold,c,IllegalMove))
+        end
   in
       state(cs,move,[])
   end
-
-
-		
-		       
-	    
-	
-   
-  
+      
+fun score_challenge(cs,goal) =
+  let
+      fun ace_card_num(cs) =
+	case cs of
+	    [] => 0
+	  | c::cs' => 
+	    case c of
+		(_,Ace) => 1+ace_card_num(cs')
+	      | _  => ace_card_num(cs')
+				  
+      fun min_preliminary_score(sum,ace_num) =	
+	let
+	    val cur_score= compute_preliminary_score(sum,goal)
+	in
+	    if ace_num = 0
+	    then
+		cur_score
+	    else
+		Int.min( min_preliminary_score(sum-10,ace_num-1),cur_score)
+	end
+      val preliminary_score = min_preliminary_score(sum_cards(cs),ace_card_num(cs))
+  in
+      if all_same_color(cs)
+      then
+	  preliminary_score div 2
+      else
+	  preliminary_score
+  end
