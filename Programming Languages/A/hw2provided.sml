@@ -26,7 +26,7 @@ fun get_substitutions1(strss,s) =
     | strs::strss' =>
 	case all_except_option(s,strs) of
 	  NONE => get_substitutions1(strss',s)
-	 | SOME a => a @ get_substitutions1(strss',s)	   									 
+	 | SOME a => a @ get_substitutions1(strss',s)
 fun get_substitutions2(strss,s) =
   let
       fun get_by_tail_recursion(acc,strss) =
@@ -93,7 +93,7 @@ fun all_same_color(cs) =
       [] => true
     | [c] => true
     | c::(d::cs') => card_color(c)=card_color(d) andalso all_same_color(d::cs')
-									
+
 fun sum_cards(cs) =
   let
       fun sum_remain_cards(acc,cs) =
@@ -122,29 +122,25 @@ fun score(cs,goal) =
 	  preliminary_score
   end
 
-fun officiate (cs,move,goal) =
+fun officiate(cs,move,goal) =
   let
       fun state(cs,move,hold) =
-        let
-            val sum = sum_cards(hold)
-        in
-            if sum > goal
-            then
-                score(hold,goal)
-            else
-                case move of
-                    [] => score(hold,goal)
-                  | m::move' =>
-                    case m of
-                        Draw => (case cs of
-                                     [] => score(hold,goal)
-                                   | c::cs' => state(cs',move',c::hold))
-                      | Discard c => state(cs,move',remove_card(hold,c,IllegalMove))
-        end
+        if sum_cards(hold) > goal
+        then
+            score(hold,goal)
+        else
+            case move of
+                [] => score(hold,goal)
+              | m::move' =>
+                case m of
+                    Draw => (case cs of
+                                 [] => score(hold,goal)
+                               | c::cs' => state(cs',move',c::hold))
+                  | Discard c => state(cs,move',remove_card(hold,c,IllegalMove))
   in
       state(cs,move,[])
   end
-      
+
 fun score_challenge(cs,goal) =
   let
       fun ace_card_num(cs) =
@@ -154,7 +150,6 @@ fun score_challenge(cs,goal) =
 	    case c of
 		(_,Ace) => 1+ace_card_num(cs')
 	      | _  => ace_card_num(cs')
-				  
       fun min_preliminary_score(sum,ace_num) =	
 	let
 	    val cur_score= compute_preliminary_score(sum,goal)
@@ -172,4 +167,94 @@ fun score_challenge(cs,goal) =
 	  preliminary_score div 2
       else
 	  preliminary_score
+  end
+      
+fun officiate_challenge(cs,move,goal) =
+  let
+      fun min_sum_cards(cs) =
+	let
+	    fun sum_remain_cards(acc,cs) =
+	      case cs of
+		  [] => acc
+		| c::cs' => (
+		    case c of
+			(_,Ace) => sum_remain_cards(acc+1,cs')
+		      | _  => sum_remain_cards(acc+card_value(c),cs')
+		)
+	in
+	    sum_remain_cards(0,cs)
+	end
+      fun state(cs,move,hold) =
+        if min_sum_cards(hold) > goal
+        then
+            score_challenge(hold,goal)
+        else
+            case move of
+                [] => score_challenge(hold,goal)
+              | m::move' =>
+                case m of
+                    Draw => (case cs of
+                                 [] => score_challenge(hold,goal)
+                               | c::cs' => state(cs',move',c::hold))
+                  | Discard c => state(cs,move',remove_card(hold,c,IllegalMove))
+  in
+      state(cs,move,[])
+  end
+      
+fun careful_player(cs,goal) =
+  let
+      fun nearest_larger_card(cs,cv) =
+	case cs of
+	    [] => NONE
+	  | c::cs' => 
+	      case card_value(c) of
+		  this_cv => (
+		  if this_cv = cv
+		  then
+		      SOME c
+		  else
+		      if this_cv < cv
+		      then
+			  nearest_larger_card(cs',cv)
+		      else
+			  case nearest_larger_card(cs',cv) of
+			      NONE => SOME c
+			    | SOME c' =>
+			      if card_value(c') < this_cv
+			      then
+				  SOME c'
+			      else
+				  SOME c
+	       )
+	  	
+      fun take_move(cs,hold) =
+	let
+	    val sum = sum_cards(hold)
+	in  
+	    if sum = goal
+	    then
+		[]
+	    else
+		case cs of
+		    [] => []
+		  | c::cs' => ( 
+		      if sum * 10 < goal
+		      then
+			  Draw::take_move(cs',c::hold)
+		      else
+			  let
+			      val diff = sum + card_value(c) - goal
+			  in
+			      if diff > 0
+			      then
+				  case nearest_larger_card(hold,diff) of
+				      NONE =>  (Discard (hd hold))::take_move(cs,remove_card(hold,hd hold,IllegalMove))
+				    | SOME c => (Discard c)::take_move(cs,remove_card(hold,c,IllegalMove))
+			      else
+				  Draw::take_move(cs',c::hold)
+			  end
+		  )
+	end
+  in
+      take_move(cs,[])
   end
