@@ -53,4 +53,6 @@ val test13c = typecheck_patterns([],[UnitP,ConstP 10]) = NONE
 
 val test13d = typecheck_patterns([],[]) = NONE
 					      
-val test13e = typecheck_patterns([],[UnitP,Variable "aaa"]) = SOME UnitT
+val test13e = typecheck_patterns([("foo","bar",UnitT)],[ConstructorP ("foo",UnitP)]) = SOME (Datatype "bar")     
+
+val test13f = typecheck_patterns([("foo","bar",UnitT),("foo2","bar",UnitT)],[ConstructorP ("foo",UnitP),ConstructorP ("foo2",UnitP)]) = SOME (Datatype "bar")   

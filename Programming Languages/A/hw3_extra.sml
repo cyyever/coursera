@@ -3,8 +3,8 @@
 fun compose_opt g f x =
   case f(x) of
       NONE => NONE
-   | SOME y => g(y) 
-  
+   | SOME y => g(y)
+
 (* 2.Write a function do_while : ('a -> 'a) -> ('a -> bool) -> 'a -> 'a. do_until f p x will apply f to x and f again to that result and so on until p x is false. Example: do_while (fn x => x div 2) (fn x => x mod 2 <> 1) will evaluate to a function of type int->int that divides its argument by 2 until it reaches an odd number. In effect, it will remove all factors of 2 its argument. *)
 
 fun do_while f p x =
