@@ -71,3 +71,5 @@
 ; similar to previous but uses only two files and one position on the grid
 (define (visual-zero-only)
   (place-repeatedly (open-window) 0.5 (stream-add-zero dan-then-dog) 27))
+
+(one-visual-test)
