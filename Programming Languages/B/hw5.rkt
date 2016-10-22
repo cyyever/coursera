@@ -148,9 +148,9 @@
                                     (apair
                                      (call (var "f") (fst (var "lst")))
                                      (call (var "map-remain") (snd (var "lst")))))))) 
-                      
 
-    
+
+
 
 (define mupl-mapAddN 
   (mlet "map" mupl-map
@@ -163,12 +163,153 @@
 
 ;; We will test this function directly, so it must do
 ;; as described in the assignment
-(define (compute-free-vars e) "CHANGE")
+(define (compute-free-vars e)
+  (define (compute-fun-body-free-vars no-free-vars e)
+    (cond [(var? e)
+           (let ([var-name (var-string e)])
+             (if (set-member? no-free-vars var-name) (set) (set var-name)))]
+          [(int? e) (set)]
+          [(add? e) (set-union
+                     (compute-fun-body-free-vars no-free-vars (add-e1 e))
+                     (compute-fun-body-free-vars no-free-vars (add-e2 e)))]
+          [(ifgreater? e) (set-union
+                           (compute-fun-body-free-vars no-free-vars (ifgreater-e1 e))
+                           (compute-fun-body-free-vars no-free-vars (ifgreater-e2 e))
+                           (compute-fun-body-free-vars no-free-vars (ifgreater-e3 e))
+                           (compute-fun-body-free-vars no-free-vars (ifgreater-e4 e)))]
+          [(fun? e)
+           (letrec ([fun-name (fun-nameopt e)]
+                    [arg-name (fun-formal e)]
+                    [no-free-vars (set arg-name)])
+             (cond [(string=? arg-name "") (error "MUPL function argument name is empty string")]
+                   [(and (string? fun-name) (string=? fun-name "")) (error "MUPL function name is empty string")]
+                   [(and (string? fun-name) (string=? fun-name arg-name)) (error "MUPL function name is same with argument name")]
+                   [#t (let ([extended-no-free-vars (if fun-name (set-add no-free-vars fun-name) no-free-vars)])
+                         (set-subtract
+                          (compute-fun-body-free-vars  extended-no-free-vars (fun-body e))
+                          extended-no-free-vars))]))]
+          [(closure? e) (compute-fun-body-free-vars no-free-vars (closure-fun e))]
+          [(call? e) (set-union
+                      (compute-fun-body-free-vars no-free-vars (call-funexp e))
+                      (compute-fun-body-free-vars no-free-vars (call-actual e)))] 
+          [(mlet? e) (set-union
+                      (compute-fun-body-free-vars no-free-vars (mlet-e e))
+                      (let ([extended-no-free-vars (set-add no-free-vars (mlet-var e))])
+                        (set-subtract
+                         (compute-fun-body-free-vars extended-no-free-vars (mlet-body e))
+                         extended-no-free-vars)))]
+          [(apair? e) (set-union
+                       (compute-fun-body-free-vars no-free-vars (apair-e1 e))
+                       (compute-fun-body-free-vars no-free-vars (apair-e2 e)))]
+          [(fst? e) (compute-fun-body-free-vars no-free-vars (fst-e e))]
+          [(snd? e) (compute-fun-body-free-vars no-free-vars (snd-e e))]
+          [(aunit? e) (set)]
+          [(isaunit? e) (compute-fun-body-free-vars no-free-vars (isaunit-e e))]
+          [#t (error (format "bad MUPL expression: ~v" e))])
+    )
+  (cond [(add? e) (add
+                   (compute-free-vars (add-e1 e))
+                   (compute-free-vars (add-e2 e)))]        
+        [(ifgreater? e) (ifgreater
+                         (compute-free-vars (ifgreater-e1 e))
+                         (compute-free-vars (ifgreater-e2 e))
+                         (compute-free-vars (ifgreater-e3 e))
+                         (compute-free-vars (ifgreater-e4 e)))]
+        [(fun? e) (fun-challenge
+                   (fun-nameopt e)
+                   (fun-formal e)
+                   (compute-free-vars (fun-body e))
+                   (compute-fun-body-free-vars (set) e))]
+        [(closure? e) (closure
+                       (closure-env e)
+                       (compute-free-vars (closure-fun e)))]
+        [(call? e) (call
+                    (compute-free-vars (call-funexp e))
+                    (compute-free-vars (call-actual e)))]
+        [(mlet? e) (mlet
+                    (mlet-var e)
+                    (compute-free-vars (mlet-e e))
+                    (compute-free-vars (mlet-body e)))]
+        [(apair? e) (apair
+                     (compute-free-vars (apair-e1 e))
+                     (compute-free-vars (apair-e2 e)))]
+        [(fst? e) (fst (compute-free-vars (fst-e e)))]
+        [(snd? e) (snd (compute-free-vars (snd-e e)))]
+        [(isaunit? e) (isaunit (compute-free-vars (isaunit-e e)))]
+        [#t e])
+  )
 
 ;; Do NOT share code with eval-under-env because that will make
 ;; auto-grading and peer assessment more difficult, so
 ;; copy most of your interpreter here and make minor changes
-(define (eval-under-env-c e env) "CHANGE")
+(define (eval-under-env-c e env)
+    (cond [(var? e)
+           (envlookup env (var-string e))]
+        [(int? e) e]
+        [(add? e) 
+         (let ([v1 (eval-under-env-c (add-e1 e) env)]
+               [v2 (eval-under-env-c (add-e2 e) env)])
+           (if (and (int? v1)
+                    (int? v2))
+               (int (+ (int-num v1) 
+                       (int-num v2)))
+               (error "MUPL addition applied to non-number")))]
+        [(ifgreater? e) 
+         (let ([v1 (eval-under-env-c (ifgreater-e1 e) env)]
+               [v2 (eval-under-env-c (ifgreater-e2 e) env)])
+           (if (and (int? v1)
+                    (int? v2))
+               (if (> (int-num v1) (int-num v2))
+                   (eval-under-env-c (ifgreater-e3 e) env)
+                   (eval-under-env-c (ifgreater-e4 e) env))
+               (error "MUPL ifgreater applied to non-number")))]
+        [(fun-challenge? e)
+         (letrec ([fun-name (fun-challenge-nameopt e)]
+                  [arg-name (fun-challenge-formal e)]
+                  [free-var-env (lambda (free-vars)
+                                  (cond [(set-empty? free-vars) null]
+                                        [#t (let ([first-free-var (set-first free-vars)]
+                                                  [remain-free-vars (set-rest free-vars)])
+                                              (cond [(or (string=? arg-name first-free-var)
+                                                         (and (string? fun-name) (string=? fun-name first-free-var))) (free-var-env remain-free-vars)]
+                                                    [#t (cons (cons first-free-var (envlookup env first-free-var)) (free-var-env remain-free-vars))]))]))])
+           (closure (free-var-env (fun-challenge-freevars e)) e))]
+        [(closure? e) e]
+        [(call? e)         
+         (let ([c (eval-under-env-c (call-funexp e) env)]
+               [v (eval-under-env-c (call-actual e) env)])
+           (if (closure? c)
+               (letrec ([f (closure-fun c)]
+                        [fun-name (fun-challenge-nameopt f)]
+                        [arg-name (fun-challenge-formal f)]
+                        [extended-env (cons (cons arg-name v) (closure-env c))])
+                 (eval-under-env-c (fun-challenge-body f) (if fun-name (cons (cons fun-name c) extended-env) extended-env)))
+               (error "MUPL calling an non-closure")))]
+        [(mlet? e)
+         (let ([var-name (mlet-var e)]
+               [v (eval-under-env-c (mlet-e e) env)])
+           (if (string=? var-name "")
+               (error "MUPL variable name is empty string")
+               (eval-under-env-c (mlet-body e) (cons (cons var-name v) env))))]
+        [(apair? e) 
+         (let ([v1 (eval-under-env-c (apair-e1 e) env)]
+               [v2 (eval-under-env-c (apair-e2 e) env)])
+           (apair v1 v2))]
+        [(fst? e) 
+         (let ([v (eval-under-env-c (fst-e e) env)])
+           (cond [(apair? v) (apair-e1 v)]
+                 [#t (error "MUPL fst applied to non-apair")]))]
+        [(snd? e) 
+         (let ([v (eval-under-env-c (snd-e e) env)])
+           (cond [(apair? v) (apair-e2 v)]
+                 [#t (error "MUPL snd applied to non-apair")]))]
+        [(aunit? e) e]
+        [(isaunit? e) 
+         (let ([v (eval-under-env-c (isaunit-e e) env)])
+           (if (aunit? v)
+               (int 1)
+               (int 0)))]
+        [#t (error (format "bad MUPL expression: ~v" e))]))
 
 ;; Do NOT change this
 (define (eval-exp-c e)

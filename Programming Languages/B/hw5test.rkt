@@ -28,7 +28,7 @@
    ;; call test
    (check-equal? (eval-exp (call (closure '() (fun #f "x" (add (var "x") (int 7)))) (int 1))) (int 8) "call test")
    
-   ;;snd test
+   ;; snd test
    (check-equal? (eval-exp (snd (apair (int 1) (int 2)))) (int 2) "snd test")
    
    ;; isaunit test
@@ -52,8 +52,59 @@
    (eval-exp (call (call mupl-mapAddN (int 7))
                    (racketlist->mupllist
                     (list (int 3) (int 4) (int 9)))))) (list (int 10) (int 11) (int 16)) "combined test")
+
    ))
+
+
+(define challenge-tests
+  (test-suite
+   "Sample tests for Assignment 5 Challenge Problem"
+
+   ;; no free var case
+
+   (check-equal? (compute-free-vars (fun "f" "x" (fun "y" "z" (var "x"))))
+                 (fun-challenge "f" "x" (fun-challenge "y" "z" (var "x") (set "x")) (set)) "no free var case")
+
+   (check-equal? (compute-free-vars (fun "f" "a" (mlet "x" (int 10) (fun "y" "z" (var "x")))))
+                 (fun-challenge "f" "a" (mlet "x" (int 10) (fun-challenge "y" "z" (var "x") (set "x"))) (set)) "no free var case")
+
+   ;; tests if ifgreater returns (int 2)
+   (check-equal? (eval-exp-c (ifgreater (int 3) (int 4) (int 3) (int 2))) (int 2) "ifgreater test")
+   
+   ;; mlet test
+   (check-equal? (eval-exp-c (mlet "x" (int 1) (add (int 5) (var "x")))) (int 6) "mlet test")
+   
+   ;; call test
+   (check-equal? (eval-exp-c (call (closure '() (fun #f "x" (add (var "x") (int 7)))) (int 1))) (int 8) "call test")
+   
+   ;; snd test
+   (check-equal? (eval-exp-c (snd (apair (int 1) (int 2)))) (int 2) "snd test")
+   
+   ;; isaunit test
+   (check-equal? (eval-exp-c (isaunit (closure '() (fun #f "x" (aunit))))) (int 0) "isaunit test")
+   
+   ;; ifaunit test
+   (check-equal? (eval-exp-c (ifaunit (int 1) (int 2) (int 3))) (int 3) "ifaunit test")
+   
+   ;; mlet* test
+   (check-equal? (eval-exp-c (mlet* (list (cons "x" (int 10))) (var "x"))) (int 10) "mlet* test")
+   
+   ;; ifeq test
+   (check-equal? (eval-exp-c (ifeq (int 1) (int 2) (int 3) (int 4))) (int 4) "ifeq test")
+
+   ;; mupl-map test
+   (check-equal? (eval-exp-c (call (call mupl-map (fun #f "x" (add (var "x") (int 7)))) (apair (int 1) (aunit)))) 
+                 (apair (int 8) (aunit)) "mupl-map test")
+   
+   ;; problems 1, 2, and 4 combined test
+   (check-equal? (mupllist->racketlist
+   (eval-exp (call (call mupl-mapAddN (int 7))
+                   (racketlist->mupllist
+                    (list (int 3) (int 4) (int 9)))))) (list (int 10) (int 11) (int 16)) "combined test")
+   ))
+
 
 (require rackunit/text-ui)
 ;; runs the test
 (run-tests tests)
+(run-tests challenge-tests)
