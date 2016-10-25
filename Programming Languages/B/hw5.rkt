@@ -27,14 +27,12 @@
 (define (racketlist->mupllist xs)
   (cond [(null? xs) (aunit)]
         [#t (apair (car xs) (racketlist->mupllist (cdr xs)))]
-        )
-  )
+        ))
 
 (define (mupllist->racketlist xs)
   (cond [(aunit? xs) null]
         [#t (cons (apair-e1 xs) (mupllist->racketlist (apair-e2 xs)))]
-        )
-  )
+        ))
 
 ;; Problem 2
 
@@ -124,14 +122,10 @@
   (ifgreater (isaunit e1) (int 0) e2 e3))
 
 (define (mlet* lstlst e2)
-  (define (extended-mlet* lstlst e2)
-    (if (null? lstlst)
-        e2
-        (mlet (car (car lstlst)) (cdr (car lstlst)) (extended-mlet* (cdr lstlst) e2)))
-    )
-  (extended-mlet* lstlst e2)
-  )
-
+  (if (null? lstlst)
+      e2
+      (mlet (car (car lstlst)) (cdr (car lstlst)) (mlet* (cdr lstlst) e2))))
+ 
 (define (ifeq e1 e2 e3 e4)
   (mlet "_x" e1
         (mlet "_y" e2
@@ -164,19 +158,19 @@
 ;; We will test this function directly, so it must do
 ;; as described in the assignment
 (define (compute-free-vars e)
-  (define (compute-fun-body-free-vars no-free-vars e)
+  (define (compute-fun-body-free-vars e)
     (cond [(var? e)
            (let ([var-name (var-string e)])
-             (if (set-member? no-free-vars var-name) (set) (set var-name)))]
+             (set var-name))]
           [(int? e) (set)]
           [(add? e) (set-union
-                     (compute-fun-body-free-vars no-free-vars (add-e1 e))
-                     (compute-fun-body-free-vars no-free-vars (add-e2 e)))]
+                     (compute-fun-body-free-vars (add-e1 e))
+                     (compute-fun-body-free-vars (add-e2 e)))]
           [(ifgreater? e) (set-union
-                           (compute-fun-body-free-vars no-free-vars (ifgreater-e1 e))
-                           (compute-fun-body-free-vars no-free-vars (ifgreater-e2 e))
-                           (compute-fun-body-free-vars no-free-vars (ifgreater-e3 e))
-                           (compute-fun-body-free-vars no-free-vars (ifgreater-e4 e)))]
+                           (compute-fun-body-free-vars (ifgreater-e1 e))
+                           (compute-fun-body-free-vars (ifgreater-e2 e))
+                           (compute-fun-body-free-vars (ifgreater-e3 e))
+                           (compute-fun-body-free-vars (ifgreater-e4 e)))]
           [(fun? e)
            (letrec ([fun-name (fun-nameopt e)]
                     [arg-name (fun-formal e)]
@@ -186,30 +180,29 @@
                    [(and (string? fun-name) (string=? fun-name arg-name)) (error "MUPL function name is same with argument name")]
                    [#t (let ([extended-no-free-vars (if fun-name (set-add no-free-vars fun-name) no-free-vars)])
                          (set-subtract
-                          (compute-fun-body-free-vars  extended-no-free-vars (fun-body e))
+                          (compute-fun-body-free-vars (fun-body e))
                           extended-no-free-vars))]))]
-          [(closure? e) (compute-fun-body-free-vars no-free-vars (closure-fun e))]
+          [(closure? e) (compute-fun-body-free-vars (closure-fun e))]
           [(call? e) (set-union
-                      (compute-fun-body-free-vars no-free-vars (call-funexp e))
-                      (compute-fun-body-free-vars no-free-vars (call-actual e)))] 
+                      (compute-fun-body-free-vars (call-funexp e))
+                      (compute-fun-body-free-vars (call-actual e)))] 
           [(mlet? e) (set-union
-                      (compute-fun-body-free-vars no-free-vars (mlet-e e))
-                      (let ([extended-no-free-vars (set-add no-free-vars (mlet-var e))])
-                        (set-subtract
-                         (compute-fun-body-free-vars extended-no-free-vars (mlet-body e))
-                         extended-no-free-vars)))]
+                      (compute-fun-body-free-vars (mlet-e e))
+                      (set-subtract
+                       (compute-fun-body-free-vars (mlet-body e))
+                       (set (mlet-var e))))]
           [(apair? e) (set-union
-                       (compute-fun-body-free-vars no-free-vars (apair-e1 e))
-                       (compute-fun-body-free-vars no-free-vars (apair-e2 e)))]
-          [(fst? e) (compute-fun-body-free-vars no-free-vars (fst-e e))]
-          [(snd? e) (compute-fun-body-free-vars no-free-vars (snd-e e))]
+                       (compute-fun-body-free-vars (apair-e1 e))
+                       (compute-fun-body-free-vars (apair-e2 e)))]
+          [(fst? e) (compute-fun-body-free-vars (fst-e e))]
+          [(snd? e) (compute-fun-body-free-vars (snd-e e))]
           [(aunit? e) (set)]
-          [(isaunit? e) (compute-fun-body-free-vars no-free-vars (isaunit-e e))]
+          [(isaunit? e) (compute-fun-body-free-vars (isaunit-e e))]
           [#t (error (format "bad MUPL expression: ~v" e))])
     )
   (cond [(add? e) (add
                    (compute-free-vars (add-e1 e))
-                   (compute-free-vars (add-e2 e)))]        
+                   (compute-free-vars (add-e2 e)))]
         [(ifgreater? e) (ifgreater
                          (compute-free-vars (ifgreater-e1 e))
                          (compute-free-vars (ifgreater-e2 e))
@@ -219,7 +212,7 @@
                    (fun-nameopt e)
                    (fun-formal e)
                    (compute-free-vars (fun-body e))
-                   (compute-fun-body-free-vars (set) e))]
+                   (compute-fun-body-free-vars e))]
         [(closure? e) (closure
                        (closure-env e)
                        (compute-free-vars (closure-fun e)))]
@@ -236,8 +229,7 @@
         [(fst? e) (fst (compute-free-vars (fst-e e)))]
         [(snd? e) (snd (compute-free-vars (snd-e e)))]
         [(isaunit? e) (isaunit (compute-free-vars (isaunit-e e)))]
-        [#t e])
-  )
+        [#t e]))
 
 ;; Do NOT share code with eval-under-env because that will make
 ;; auto-grading and peer assessment more difficult, so
